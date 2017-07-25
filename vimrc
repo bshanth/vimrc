@@ -18,12 +18,30 @@ set viminfo^=!
 set textwidth=78
 set notimeout
 set nottimeout
-set diffopt+=iwhite
+"set diffopt+=iwhite
 set t_Co=256
 set pastetoggle=<F1>
 setlocal comments=sO:*\ -,mO:*\ \ ,exO:*/,s1:/*,mb:*,ex:*/,://
-let @q='d2wywiprintf .q<80>kbpli.; .5x<80>kbbi0x<80>kblllli, <80>kb$bx0j'
 "set rtp+=/home/ebapras/env/bin/powerline/powerline/bindings/vim
+"
+"let g:indentLine_char = 'â”Š'
+let g:indentLine_char = '.'
+let g:indentLine_leadingSpaceChar = ''
+
+map <F10> :echo "hi<" . synIDattr(synID(line("."),col("."),1),"name") . '> trans<'
+\ . synIDattr(synID(line("."),col("."),0),"name") . "> lo<"
+\ . synIDattr(synIDtrans(synID(line("."),col("."),1)),"name") . ">"<CR>
+"highlight trailing spaces
+":highlight ExtraWhitespace ctermbg=red guibg=red
+":match ExtraWhitespace /\s\+$/
+
+au BufWritePost *.[ch] 
+          \ if (&filetype == 'c' || &filetype == 'h') 
+          \ | call GenerategtagsFiles() 
+          \ | :redraw!
+          \ |endif
+
+au BufRead,BufNewFile *.yang set filetype=yang
 
 map <F10> :echo "hi<" . synIDattr(synID(line("."),col("."),1),"name") . '> trans<'
 \ . synIDattr(synID(line("."),col("."),0),"name") . "> lo<"
@@ -122,6 +140,7 @@ fun! Cabrs()
     iab com /*<CR><CR>/<Up>
 
     inoremap .. <ESC>/[;()*&^%$#}{@!~]/e<CR><Right><Insert>
+    inoremap .1 -
 
     "inoremap .. <End><Insert>;<ESC>o
     inoremap [ {<CR>}<ESC>ko
@@ -443,6 +462,7 @@ endif
 augroup vimrc_autocmds
   autocmd BufEnter *.[ch] highlight OverLength ctermbg=238 guibg=#592929
   autocmd BufEnter *.[ch] match OverLength /\%80v.*/
+  autocmd BufWritePre *.[ch] :call TrimWhitespace()
 augroup END
 
 "if exists('+colorcolumn')
@@ -743,8 +763,8 @@ fun! Lopen()
     if (mapcheck("<CR>") != "")
         exe ":unmap <script> <CR>"
     endif
-    "exe ":lopen"
-    exe ":copen"
+    exe ":lopen"
+    "exe ":copen"
 endfun
 
 nmap <script> <silent> cr :lrewind <CR>
@@ -752,7 +772,7 @@ nmap <script> <silent> cc :call Lclose() <CR>
 
 fun! Lclose()
     exe ":nmap <script> <silent> <CR> :call Enter() <CR>"
-    "exe ":lclose"
+    exe ":lclose"
     exe ":cclose"
 endfun
 
@@ -869,13 +889,13 @@ fun! Qfnext()
         if (g:qfnextflag == 2)
             call ChangeListScanNext()
         elseif (g:qfnextflag == 1)
-            if (empty(getqflist()))
+            if (empty(getloclist(0)))
                 exe "unmap <silent> n"
                 exe "silent! normal n"
                 exe "nmap <script> n :call Qfnext() <CR>"
             else
-                "exe ":silent! lnext"
-                exe ":silent! cnext"
+                exe ":silent! lnext"
+                "exe ":silent! cnext"
                 let tmp = g:loclist[g:loclistscntr][2]
                 let tmp = tmp + 1
 
@@ -915,13 +935,13 @@ fun! Qfprev()
             call ChangeListScanPrev()
         elseif (g:qfnextflag == 1)
             "if (empty(getloclist(g:loclistscntr)))
-            if (empty(getqflist()))
+            if (empty(getloclist(0)))
                 exe "unmap <silent> p"
                 execute "silent! normal p"
                 nmap <script> p :call Qfprev() <CR>
             else
-                "exe ":silent! lprev"
-                exe ":silent! cprev"
+                exe ":silent! lprev"
+                "exe ":silent! cprev"
                 
                 let tmp = g:loclist[g:loclistscntr][2]
                 let tmp = tmp - 1
@@ -1033,11 +1053,6 @@ fun! Gb()
     let tagname = GetTagName(line("."))
     exe ":CCTreeTraceReverse ".tagname
 endfun
-
-au BufWritePost *.[ch] 
-          \ if (&filetype == 'c' || &filetype == 'h')
-          "\ |  :GenerategtagsFiles"
-          "\ |   exe "redraw!"
 
 " Changlist start 
 
@@ -1310,7 +1325,32 @@ endfun
 
 command! GenerategtagsFiles call GenerategtagsFiles()
     function! GenerategtagsFiles()
-    let cmd = 'silent! !global --single-update ".bufname("%").' 
-    let env = asynchandler#rename('gtags.files')
-    call asynccommand#run(cmd, env)
+"    let cmd = 'silent! !global --single-update '.bufname("%")
+"    let env = asynchandler#rename('gtags.files')
+"    call asynccommand#run(cmd, env)
+    silent! execute '!global  ,e,esingle,eupdate '. bufname("%")
+    "echo '!global ,e,esingle,eupdate '. bufname("%")
+
 endfunction
+
+" Search for current word and replace with given text for files in arglist.
+function! Replace(bang, replace)
+  let flag = 'ge'
+  if !a:bang
+    let flag .= 'c'
+  endif
+  let search = '\<' . escape(expand('<cword>'), '/\.*$^~[') . '\>'
+  let replace = escape(a:replace, '/\&~')
+  execute 'argdo %s/' . search . '/' . replace . '/' . flag
+endfunction
+command! -nargs=1 -bang Replace :call Replace(<bang>0, <q-args>)
+nnoremap <Leader>r :call Replace(0, input('Replace '.expand('<cword>').' with: '))<CR>
+
+fun! TrimWhitespace()
+    let l:save = winsaveview()
+    %s/\s\+$//e
+    call winrestview(l:save)
+endfun
+
+let @t='5yy4jp1ww/ips"edw3wwj€kbbdwh"epjbdwh"epli-parse-cb€kbbguu€kbb"fywjlhldwh"ep2wwovoid€kb"fp"bpa;€kbkvjy3wwjjjo€kbpj€kbxo€kb"dp?ips_typekwkjo€kb3ww'
+
